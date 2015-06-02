@@ -88,6 +88,21 @@ module Allpay
       JSON.parse(res.body)
     end
 
+    def credit_do_action params = {}
+      res = request '/CreditDetail/DoAction', params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]      
+    end
+
+    def aio_charge_back params = {}
+      res = request '/Cashier/AioChargeback', params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]         
+    end
+
+    def capture
+      res = request '/Cashier/Capture', params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]        
+    end
+
     private
 
     def option_required! *option_names
