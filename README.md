@@ -1,5 +1,4 @@
 [![Build Status](https://travis-ci.org/tonytonyjan/allpay.svg?branch=master)](https://travis-ci.org/tonytonyjan/allpay)
-
 # Allpay 歐付寶
 
 這是歐付寶 API 的 Ruby 包裝，更多資訊參考他們的[官方文件](https://www.allpay.com.tw/Content/files/%E5%85%A8%E6%96%B9%E4%BD%8D%E9%87%91%E6%B5%81%E4%BB%8B%E6%8E%A5%E6%8A%80%E8%A1%93%E6%96%87%E4%BB%B6.pdf)。
@@ -7,6 +6,11 @@
 - 這不是 Rails 插件，只是個 API 包裝。
 - 使用時只需要傳送需要的參數即可，不用產生檢查碼，`allpay_client` 會自己產生。
 - 錯誤代碼太多且會不斷增加，筆者不另行撰寫，官方也建議查網站上的代碼清單。
+
+## 分支說明
+原作者在此：https://github.com/tonytonyjan/allpay
+因allpay一直在更新，剛好最近需要串allpay
+就拿來改一下把所有API包進去，並加入開發票的功能
 
 ## 安裝
 

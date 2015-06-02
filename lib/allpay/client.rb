@@ -98,7 +98,7 @@ module Allpay
       Hash[res.body.split('&').map!{|i| i.split('=')}]         
     end
 
-    def capture
+    def capture params = {}
       res = request '/Cashier/Capture', params
       Hash[res.body.split('&').map!{|i| i.split('=')}]        
     end
