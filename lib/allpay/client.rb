@@ -1,3 +1,4 @@
+# encoding: UTF-8
 require 'net/http'
 require 'json'
 require 'cgi'
@@ -38,10 +39,21 @@ module Allpay
     end
 
     def make_mac params = {}
-      raw = params.sort.map!{|k,v| "#{k}=#{v}"}.join('&')
+      raw = params.sort_by{|x| x.to_s.downcase!}.map!{|k,v| "#{k}=#{v}"}.join('&')
       padded = "HashKey=#{@options[:hash_key]}&#{raw}&HashIV=#{@options[:hash_iv]}"
-      url_encoded = CGI.escape(padded).downcase!
+      url_encoded = url_encode(padded).downcase!
       Digest::MD5.hexdigest(url_encoded).upcase!
+    end
+
+    #base from CGI::escape
+    #replace (,),!,*,.,-,_ 
+    def url_encode text 
+      text = text.dup
+      text.gsub!(/([^ a-zA-Z0-9\(\)\!\*_.-]+)/) do
+        '%' + $1.unpack('H2' * $1.bytesize).join('%')
+      end
+      text.tr!(' ', '+')
+      text
     end
 
     def verify_mac params = {}
@@ -101,6 +113,10 @@ module Allpay
     def capture params = {}
       res = request '/Cashier/Capture', params
       Hash[res.body.split('&').map!{|i| i.split('=')}]        
+    end
+
+    def gen_check_mac_value params = {}
+      request '/AioHelper/GenCheckMacValue', params
     end
 
     private
