@@ -107,7 +107,7 @@ module Allpay
 
     def aio_charge_back params = {}
       res = request '/Cashier/AioChargeback', params
-      Hash[res.body.split('&').map!{|i| i.split('=')}]         
+      res.body
     end
 
     def capture params = {}
@@ -116,7 +116,8 @@ module Allpay
     end
 
     def gen_check_mac_value params = {}
-      request '/AioHelper/GenCheckMacValue', params
+      res = request '/AioHelper/GenCheckMacValue', params
+      res.body
     end
 
     private
