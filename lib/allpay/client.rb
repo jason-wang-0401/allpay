@@ -8,8 +8,11 @@ require 'allpay/core_ext/hash'
 
 module Allpay
   class Client
+    PRE_ENCODE_COLUMN = [:CustomerName, :CustomerAddr , :CustomerEmail, :InvoiceItemName, :InvoiceItemWord, :InvoiceRemark]
     PRODUCTION_API_HOST = 'https://payment.allpay.com.tw'.freeze
+    PRODUCTION_INVOICE_HOST = 'https://einvoice.allpay.com.tw/Invoice'.freeze
     TEST_API_HOST = 'http://payment-stage.allpay.com.tw'.freeze
+    TEST_INVOICE_HOST = 'http://einvoice-stage.allpay.com.tw/Invoice'.freeze
     TEST_OPTIONS = {
       merchant_id: '2000132',
       hash_key: '5294y06JbISpM5x9',
@@ -63,10 +66,18 @@ module Allpay
     end
 
     def generate_params overwrite_params = {}
-      result = overwrite_params.clone
+      result = pre_encode(overwrite_params)
       result[:MerchantID] = @options[:merchant_id]
       result[:CheckMacValue] = make_mac(result)
       result
+    end
+
+    def generate_invoice_params overwrite_params = {}
+      generate_params({
+        TimeStamp: Time.now.strftime('%Y/%m/%d %H:%M:%S'),
+        RelateNumber: SecureRandom.hex(4),
+        PaymentType: 'aio'
+      }.merge!(overwrite_params))
     end
 
     def generate_checkout_params overwrite_params = {}
@@ -116,11 +127,19 @@ module Allpay
     end
 
     def gen_check_mac_value params = {}
-      res = request '/AioHelper/GenCheckMacValue', params
+      url = URI.join(api_host, '/AioHelper/GenCheckMacValue')
+      res = Net::HTTP.post_form url, params
       res.body
     end
 
     private
+
+    def pre_encode params
+      PRE_ENCODE_COLUMN.each do |key|
+        params[key] = url_encode(params[key]) if params.has_key?(key)
+      end
+      params
+    end
 
     def option_required! *option_names
       option_names.each do |option_name|
