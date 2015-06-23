@@ -42,7 +42,7 @@ module Allpay
     end
 
     def make_mac params = {}
-      raw = params.sort_by{|x| x.to_s.downcase!}.map!{|k,v| "#{k}=#{v}"}.join('&')
+      raw = params.sort_by{|x| x.to_s.downcase}.map!{|k,v| "#{k}=#{v}"}.join('&')
       padded = "HashKey=#{@options[:hash_key]}&#{raw}&HashIV=#{@options[:hash_iv]}"
       url_encoded = url_encode(padded).downcase!
       Digest::MD5.hexdigest(url_encoded).upcase!
