@@ -7,10 +7,10 @@ require 'allpay/core_ext/hash'
 
 module Allpay
   class Invoice
-    PRE_ENCODE_COLUMN = [:CustomerName, :CustomerAddr , :CustomerEmail, :ItemName, :ItemWord, :InvoiceRemark, :InvCreateDate]
-    BLACK_LIST_COLUMN = [:ItemName, :ItemWord, :InvoiceRemark]
-    PRODUCTION_API_HOST = 'https://einvoice.allpay.com.tw/Invoice'.freeze
-    TEST_API_HOST = 'http://einvoice-stage.allpay.com.tw/Invoice'.freeze
+    PRE_ENCODE_COLUMN = [:CustomerName, :CustomerAddr , :CustomerEmail, :ItemName, :ItemWord, :InvoiceRemark, :InvCreateDate, :NotifyMail, :Reason, :IIS_Customer_Name, :IIS_Customer_Addr]
+    BLACK_LIST_COLUMN = [:ItemName, :ItemWord, :InvoiceRemark, :Reason]
+    PRODUCTION_API_HOST = 'https://einvoice.allpay.com.tw'.freeze
+    TEST_API_HOST = 'http://einvoice-stage.allpay.com.tw'.freeze
     TEST_OPTIONS = {
       merchant_id: '2000132',
       hash_key: 'ejCk326UnaZWKisg',
@@ -54,7 +54,6 @@ module Allpay
     end
 
     def generate_params overwrite_params = {}
-      # mac = make_mac(result.clone.delete_if{|key,value| [:ItemName,:ItemWord,:InvoiceRemark].find_index(key)})
       result = overwrite_params
       result[:TimeStamp] = Time.now.to_i
       result[:MerchantID] = @options[:merchant_id]
@@ -63,31 +62,31 @@ module Allpay
     end
 
     def request path, params = {}
-      api_url = URI.parse(api_host + path)
+      api_url = URI.parse(api_host, path)
       Net::HTTP.post_form api_url, params
     end
 
     # 一般開立發票API
-    # url_encode => Reason
+    # url_encode => CustomerAddr / CustomerName / CustomerEmail / ItemName / ItemWord / InvCreateDate / InvoiceRemark
     # 在產生 CheckMacValue 時,須將 ItemName、ItemWord 及 InvoiceRemark 等欄位排除
     def issue overwrite_params = {}
-      res = request '/Issue' , generate_params(overwrite_params)
+      res = request '/Invoice/Issue' , generate_params(overwrite_params)
       Hash[res.body.split('&').map!{|i| i.split('=')}]
     end
 
     # 延遲或觸發開立發票API
-    # url_encode => Reason
+    # url_encode => CustomerEmail / CustomerName / CustomerAddr / ItemName / ItemWord / InvoiceRemark
     # 在產生 CheckMacValue 時,須將 ItemName、ItemWord 及 InvoiceRemark 等欄位排除
     def delay_issue overwrite_params = {}
-      res = request '/DelayIssue' , overwrite_params
+      res = request '/Invoice/DelayIssue' , overwrite_params
       Hash[res.body.split('&').map!{|i| i.split('=')}]
     end
 
     # 開立折讓API
-    # url_encode => Reason
+    # url_encode => NotifyMail / ItemName / ItemWord
     # 在產生 CheckMacValue 時,須將 ItemName 及 ItemWord 等欄位排除
     def allowance
-      res = request '/DelayIssue' , overwrite_params
+      res = request '/Invoice/Allowance' , overwrite_params
       Hash[res.body.split('&').map!{|i| i.split('=')}]      
     end
 
@@ -95,7 +94,7 @@ module Allpay
     # url_encode => Reason
     # 在產生 CheckMacValue 時,須將 Reason 欄位排除
     def issue_invalid
-      res = request '/DelayIssue' , overwrite_params
+      res = request '/Invoice/IssueInvalid' , overwrite_params
       Hash[res.body.split('&').map!{|i| i.split('=')}]      
     end
 
@@ -103,7 +102,7 @@ module Allpay
     # url_encode => Reason
     # 在產生 CheckMacValue 時,須將 ItemName 及 ItemWord 等欄位排除    
     def allowance_invalid
-      res = request '/DelayIssue' , overwrite_params
+      res = request '/AllowanceInvalid' , overwrite_params
       Hash[res.body.split('&').map!{|i| i.split('=')}]     
     end
 
@@ -111,39 +110,43 @@ module Allpay
     # url_encode => IIS_Customer_Name / IIS_Customer_Addr / ItemName / ItemWord / InvoiceRemark
     # 在產生 CheckMacValue 時,須將 ItemName、ItemWord 及 InvoiceRemark 等欄位排除
     def query_issue
-      
+      res = request '/Query/Issue' , overwrite_params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]            
     end
 
     # 查詢作廢發票API
     # url_encode => Reason
     # 在產生 CheckMacValue 時,須將 Reason 等欄位排除    
     def query_issue_invalid
-      
+      res = request '/Query/IssueInvalid' , overwrite_params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]            
     end
 
     # 查詢折讓明細API
     # url_encode => ItemName / ItemWord / IIS_Customer_Name
     # 在產生 CheckMacValue 時,須將 ItemName、ItemWord 等欄位排除    
     def query_allowance
-      
+      res = request '/Query/Allowance' , overwrite_params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]            
     end
 
     # 查詢折讓作廢明細API
     # url_encode => Reason
     # 在產生 CheckMacValue 時,須將 Reason 等欄位排除    
     def query_allowance_invalid
-      
+      res = request '/Query/AllowanceInvalid' , overwrite_params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]      
     end
 
     # 發送通知API
     def invoice_notify
-      res = request '/DelayIssue' , overwrite_params
+      res = request '/Notify/InvoiceNotify' , overwrite_params
       Hash[res.body.split('&').map!{|i| i.split('=')}]      
     end
 
     # 付款完成觸發或延遲開立發票API
     def trigger_issue
-      res = request '/DelayIssue' , overwrite_params
+      res = request '/Invoice/TriggerIssue' , overwrite_params
       Hash[res.body.split('&').map!{|i| i.split('=')}]      
     end
 
