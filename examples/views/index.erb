@@ -7,13 +7,8 @@
 <body>
   <form action="http://payment-stage.allpay.com.tw/Cashier/AioCheckOut" method="post">
     <% @params.each do |k, v| %>
-    	<%=Allpay::Client::PRE_ENCODE_COLUMN.find_index(k)%>
       <%= k %>
-      <%if Allpay::Client::PRE_ENCODE_COLUMN.find_index(k)%>
-      	<input type="text" name="<%= k %>" value="<%= CGI::unescape(v) %>"><br>
-      <%else%>
-      	<input type="text" name="<%= k %>" value="<%= v %>"><br>
-      <%end%>
+      <input type="text" name="<%= k %>" value="<%= v %>"><br>
     <% end %>
     <input type="submit">
   </form>
