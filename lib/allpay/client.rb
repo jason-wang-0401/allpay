@@ -1,3 +1,4 @@
+# encoding: UTF-8
 require 'net/http'
 require 'json'
 require 'cgi'
@@ -7,6 +8,7 @@ require 'allpay/core_ext/hash'
 
 module Allpay
   class Client
+    PRE_ENCODE_COLUMN = [:CustomerName, :CustomerAddr , :CustomerEmail, :InvoiceItemName, :InvoiceItemWord, :InvoiceRemark]
     PRODUCTION_API_HOST = 'https://payment.allpay.com.tw'.freeze
     TEST_API_HOST = 'http://payment-stage.allpay.com.tw'.freeze
     TEST_OPTIONS = {
@@ -38,15 +40,29 @@ module Allpay
     end
 
     def make_mac params = {}
-      raw = params.sort_by{|k,v|k.downcase}.map!{|k,v| "#{k}=#{v}"}.join('&')
+      raw = pre_encode(params).sort_by{|x| x.to_s.downcase}.map!{|k,v| "#{k}=#{v}"}.join('&')
       padded = "HashKey=#{@options[:hash_key]}&#{raw}&HashIV=#{@options[:hash_iv]}"
-      url_encoded = CGI.escape(padded).downcase!
+      url_encoded = url_encode(padded).downcase!
       Digest::MD5.hexdigest(url_encoded).upcase!
+    end
+
+    #base from CGI::escape
+    #replace (,),!,*,.,-,_ 
+    def url_encode text 
+      text = text.dup
+      text.gsub!(/([^ a-zA-Z0-9\(\)\!\*_.-]+)/) do
+        '%' + $1.unpack('H2' * $1.bytesize).join('%')
+      end
+      text.tr!(' ', '+')
+      text
     end
 
     def verify_mac params = {}
       stringified_keys = params.stringify_keys
       check_mac_value = stringified_keys.delete('CheckMacValue')
+      p "傳來的params #{stringified_keys}"
+      p "傳來的mac #{check_mac_value}"
+      p "驗證的mac #{make_mac(stringified_keys)}"
       make_mac(stringified_keys) == check_mac_value
     end
 
@@ -88,11 +104,39 @@ module Allpay
       JSON.parse(res.body)
     end
 
+    def credit_do_action params = {}
+      res = request '/CreditDetail/DoAction', params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]      
+    end
+
+    def aio_charge_back params = {}
+      res = request '/Cashier/AioChargeback', params
+      res.body
+    end
+
+    def capture params = {}
+      res = request '/Cashier/Capture', params
+      Hash[res.body.split('&').map!{|i| i.split('=')}]        
+    end
+
+    def gen_check_mac_value params = {}
+      url = URI.join(api_host, '/AioHelper/GenCheckMacValue')
+      res = Net::HTTP.post_form url, params
+      res.body
+    end
+
     private
+
+    def pre_encode params
+      PRE_ENCODE_COLUMN.each do |key|
+        params[key] = url_encode(params[key]) if params.has_key?(key)
+      end
+      params
+    end
 
     def option_required! *option_names
       option_names.each do |option_name|
-        raise MissingOption, %Q{option "#{option_name}" is required.} if @options[:option_name].nil?
+        raise MissingOption, %Q{option "#{option_name}" is required.} if @options[option_name].nil?
       end
     end
   end
