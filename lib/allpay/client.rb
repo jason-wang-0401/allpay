@@ -19,8 +19,8 @@ module Allpay
 
     attr_reader :options
 
-    def initialize options = {}
-      @options = {mode: :production}.merge!(options)
+    def initialize(options = {})
+      @options = { mode: :production }.merge!(options)
       case @options[:mode]
       when :production
         option_required! :merchant_id, :hash_key, :hash_iv
@@ -39,16 +39,21 @@ module Allpay
       end
     end
 
-    def make_mac params = {}
-      raw = pre_encode(params).sort_by{|x| x.to_s.downcase}.map!{|k,v| "#{k}=#{v}"}.join('&')
+    def make_mac(params = {})
+      raw = pre_encode(params).sort_by{ |x| x.to_s.downcase }.map!{ |k, v| "#{k}=#{v}" }.join('&')
       padded = "HashKey=#{@options[:hash_key]}&#{raw}&HashIV=#{@options[:hash_iv]}"
       url_encoded = url_encode(padded).downcase!
-      Digest::MD5.hexdigest(url_encoded).upcase!
+
+      if params[:EncryptType] == 1
+        Digest::SHA256.hexdigest(url_encoded).upcase!
+      else
+        Digest::MD5.hexdigest(url_encoded).upcase!
+      end
     end
 
-    #base from CGI::escape
-    #replace (,),!,*,.,-,_ 
-    def url_encode text 
+    # base from CGI::escape
+    # replace (,),!,*,.,-,_
+    def url_encode text
       text = text.dup
       text.gsub!(/([^ a-zA-Z0-9\(\)\!\*_.-]+)/) do
         '%' + $1.unpack('H2' * $1.bytesize).join('%')
@@ -57,7 +62,7 @@ module Allpay
       text
     end
 
-    def verify_mac params = {}
+    def verify_mac(params = {})
       stringified_keys = params.stringify_keys
       check_mac_value = stringified_keys.delete('CheckMacValue')
       p "傳來的params #{stringified_keys}"
@@ -75,7 +80,7 @@ module Allpay
 
     def generate_checkout_params overwrite_params = {}
       generate_params({
-        MerchantTradeDate: Time.now.strftime('%Y/%m/%d %H:%M:%S'),
+        MerchantTradeDate: Time.zone.now.strftime('%Y/%m/%d %H:%M:%S'),
         MerchantTradeNo: SecureRandom.hex(4),
         PaymentType: 'aio'
       }.merge!(overwrite_params))
@@ -106,7 +111,7 @@ module Allpay
 
     def credit_do_action params = {}
       res = request '/CreditDetail/DoAction', params
-      Hash[res.body.split('&').map!{|i| i.split('=')}]      
+      Hash[res.body.split('&').map!{|i| i.split('=')}]
     end
 
     def aio_charge_back params = {}
@@ -116,7 +121,7 @@ module Allpay
 
     def capture params = {}
       res = request '/Cashier/Capture', params
-      Hash[res.body.split('&').map!{|i| i.split('=')}]        
+      Hash[res.body.split('&').map!{|i| i.split('=')}]
     end
 
     def gen_check_mac_value params = {}
