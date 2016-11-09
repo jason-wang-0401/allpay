@@ -43,12 +43,7 @@ module Allpay
       raw = pre_encode(params).sort_by{ |x| x.to_s.downcase }.map!{ |k, v| "#{k}=#{v}" }.join('&')
       padded = "HashKey=#{@options[:hash_key]}&#{raw}&HashIV=#{@options[:hash_iv]}"
       url_encoded = url_encode(padded).downcase!
-
-      if params[:EncryptType] == 1
-        Digest::SHA256.hexdigest(url_encoded).upcase!
-      else
-        Digest::MD5.hexdigest(url_encoded).upcase!
-      end
+      Digest::SHA256.hexdigest(url_encoded).upcase!
     end
 
     # base from CGI::escape
