@@ -43,6 +43,13 @@ module Allpay
       raw = pre_encode(params).sort_by{ |x| x.to_s.downcase }.map!{ |k, v| "#{k}=#{v}" }.join('&')
       padded = "HashKey=#{@options[:hash_key]}&#{raw}&HashIV=#{@options[:hash_iv]}"
       url_encoded = url_encode(padded).downcase!
+      Digest::MD5.hexdigest(url_encoded).upcase!
+    end
+
+    def make_mac_by_sha256(params = {})
+      raw = pre_encode(params).sort_by{ |x| x.to_s.downcase }.map!{ |k, v| "#{k}=#{v}" }.join('&')
+      padded = "HashKey=#{@options[:hash_key]}&#{raw}&HashIV=#{@options[:hash_iv]}"
+      url_encoded = url_encode(padded).downcase!
       Digest::SHA256.hexdigest(url_encoded).upcase!
     end
 
@@ -62,64 +69,65 @@ module Allpay
       check_mac_value = stringified_keys.delete('CheckMacValue')
       p "傳來的params #{stringified_keys}"
       p "傳來的mac #{check_mac_value}"
-      p "驗證的mac #{make_mac(stringified_keys)}"
-      make_mac(stringified_keys) == check_mac_value
+      p "驗證的mac(MD5) #{make_mac(stringified_keys)}"
+      p "驗證的mac(SHA256) #{make_mac_by_sha256(stringified_keys)}"
+      make_mac(stringified_keys) == check_mac_value || make_mac_by_sha256(stringified_keys) == check_mac_value
     end
 
-    def generate_params overwrite_params = {}
+    def generate_params(overwrite_params = {}, is_mac_sha256 = false)
       result = overwrite_params.clone
       result[:MerchantID] = @options[:merchant_id]
-      result[:CheckMacValue] = make_mac(result)
+      result[:CheckMacValue] = is_mac_sha256 ? make_mac_by_sha256(result) : make_mac(result)
       result
     end
 
-    def generate_checkout_params overwrite_params = {}
+    def generate_checkout_params(overwrite_params = {})
       generate_params({
         MerchantTradeDate: Time.zone.now.strftime('%Y/%m/%d %H:%M:%S'),
         MerchantTradeNo: SecureRandom.hex(4),
         PaymentType: 'aio'
-      }.merge!(overwrite_params))
+      }.merge!(overwrite_params), true)
     end
 
-    def request path, params = {}
+    def request(path, params = {})
       api_url = URI.join(api_host, path)
       Net::HTTP.post_form api_url, generate_params(params)
     end
 
-    def query_trade_info merchant_trade_number, platform = nil
+    def query_trade_info(merchant_trade_number, platform = nil)
       params = {
         MerchantTradeNo: merchant_trade_number,
         TimeStamp: Time.now.to_i,
         PlatformID: platform
       }
-      params.delete_if{ |k, v| v.nil? }
+      params.delete_if { |k, v| v.nil? }
       res = request '/Cashier/QueryTradeInfo', params
-      Hash[res.body.split('&').map!{|i| i.split('=')}]
+      Hash[res.body.split('&').map! { |i| i.split('=') }]
     end
 
-    def query_period_credit_card_trade_info merchant_trade_number
+    def query_period_credit_card_trade_info(merchant_trade_number)
       res = request '/Cashier/QueryPeriodCreditCardTradeInfo',
-              MerchantTradeNo: merchant_trade_number,
-              TimeStamp: Time.now.to_i
+                    MerchantTradeNo: merchant_trade_number,
+                    TimeStamp: Time.now.to_i
       JSON.parse(res.body)
     end
 
-    def credit_do_action params = {}
+    def credit_do_action(params = {})
       res = request '/CreditDetail/DoAction', params
-      Hash[res.body.split('&').map!{|i| i.split('=')}]
+      Hash[res.body.split('&').map! { |i| i.split('=') }]
     end
 
-    def aio_charge_back params = {}
+    def aio_charge_back(params = {})
       res = request '/Cashier/AioChargeback', params
       res.body
     end
 
-    def capture params = {}
+    def capture(params = {})
       res = request '/Cashier/Capture', params
-      Hash[res.body.split('&').map!{|i| i.split('=')}]
+      Hash[res.body.split('&').map! { |i| i.split('=') }]
     end
 
-    def gen_check_mac_value params = {}
+    def gen_check_mac_value(params = {})
       url = URI.join(api_host, '/AioHelper/GenCheckMacValue')
       res = Net::HTTP.post_form url, params
       res.body
@@ -127,7 +135,7 @@ module Allpay
 
     private
 
-    def pre_encode params
+    def pre_encode(params = {})
       PRE_ENCODE_COLUMN.each do |key|
         params[key] = url_encode(params[key]) if params.has_key?(key)
       end
