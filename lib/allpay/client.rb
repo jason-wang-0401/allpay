@@ -9,8 +9,12 @@ require 'allpay/core_ext/hash'
 module Allpay
   class Client
     PRE_ENCODE_COLUMN = [:CustomerName, :CustomerAddr , :CustomerEmail, :InvoiceItemName, :InvoiceItemWord, :InvoiceRemark]
-    PRODUCTION_API_HOST = 'https://payment.allpay.com.tw'.freeze
-    TEST_API_HOST = 'http://payment-stage.allpay.com.tw'.freeze
+
+    ALLPAY_PRODUCTION_API_HOST = 'https://payment.allpay.com.tw'.freeze
+    ALLPAY_TEST_API_HOST = 'https://payment-stage.allpay.com.tw'.freeze
+    ECPAY_PRODUCTION_API_HOST = 'https://payment.ecpay.com.tw'.freeze
+    ECPAY_TEST_API_HOST = 'https://payment-stage.ecpay.com.tw'.freeze
+
     TEST_OPTIONS = {
       merchant_id: '2000132',
       hash_key: '5294y06JbISpM5x9',
@@ -33,9 +37,10 @@ module Allpay
     end
 
     def api_host
-      case @options[:mode]
-      when :production then PRODUCTION_API_HOST
-      when :test then TEST_API_HOST
+      if @options[:mode] == :production
+        @options[:server] == :allpay ? ALLPAY_PRODUCTION_API_HOST : ECPAY_PRODUCTION_API_HOST
+      else
+        @options[:server] == :allpay ? ALLPAY_TEST_API_HOST : ECPAY_TEST_API_HOST
       end
     end
 
